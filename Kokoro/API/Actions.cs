@@ -25,6 +25,9 @@ public partial interface IKokoroApi
 		AVariableHint MakeEnergyX(AVariableHint? action = null, bool energy = true, int? tooltipOverride = null);
 		AStatus MakeEnergy(AStatus action, bool energy = true);
 
+		CardAction MakeDummyRow(IEnumerable<Icon> icons, IEnumerable<Tooltip> tooltips);
+		CardAction MakeDummyStandin(IEnumerable<CardAction> template);
+
 		List<CardAction> GetWrappedCardActions(CardAction action);
 		List<CardAction> GetWrappedCardActionsRecursively(CardAction action);
 		List<CardAction> GetWrappedCardActionsRecursively(CardAction action, bool includingWrapperActions);

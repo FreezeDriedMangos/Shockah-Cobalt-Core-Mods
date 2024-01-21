@@ -282,6 +282,13 @@ public sealed class ApiImplementation : IKokoroApi, IProxyProvider
 			return copy;
 		}
 
+
+		public CardAction MakeDummyRow(IEnumerable<Icon> icons, IEnumerable<Tooltip> tooltips) =>
+			new ATooltipDummy() { icons = new List<Icon>(icons), tooltips = new List<Tooltip>(tooltips) };
+
+		public CardAction MakeDummyStandin(CardAction template) =>
+			ATooltipDummy.BuildStandIn(template);
+
 		public List<CardAction> GetWrappedCardActions(CardAction action)
 			=> Instance.WrappedActionManager.GetWrappedCardActions(action).ToList();
 

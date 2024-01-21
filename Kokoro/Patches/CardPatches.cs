@@ -6,6 +6,7 @@ using Nanoray.Shrike.Harmony;
 using Shockah.Shared;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -403,6 +404,37 @@ internal static class CardPatches
 			wrappedAction.disabled = oldActionDisabled;
 
 			return false;
+		} 
+		else if (action is ATooltipDummy aTooltipDummy)
+		{
+			if (aTooltipDummy.icons == null)
+			{
+				return true;
+			}
+
+			if (dontDraw)
+			{
+				return false;
+			}
+
+			var iconNumberPadding = aTooltipDummy.icons.Count >= 3 ? 1 : 2;
+			var iconPadding = aTooltipDummy.icons.Count >= 3 ? 2 : 4;
+
+			Color spriteColor = (action.disabled ? Colors.disabledIconTint : new Color("ffffff"));
+			int w = 0;
+			bool isFirst = true;
+
+			foreach (var icon in aTooltipDummy.icons)
+			{
+				ATooltipDummy.IconAndOrNumber(icon.path, ref isFirst, ref w, g, action, state, spriteColor, true, amount: icon.number, iconWidth: SpriteLoader.Get(icon.path).Width, iconNumberPadding: iconNumberPadding, iconPadding: iconPadding);
+			}
+
+			w = -w / 2;
+			isFirst = true;
+			foreach (var icon in aTooltipDummy.icons)
+			{
+				ATooltipDummy.IconAndOrNumber(icon.path, ref isFirst, ref w, g, action, state, spriteColor, dontDraw, amount: icon.number, iconWidth: SpriteLoader.Get(icon.path).Width, iconNumberPadding: iconNumberPadding, iconPadding: iconPadding, textColor: icon.color);
+			}
 		}
 
 		return true;
