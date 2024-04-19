@@ -123,12 +123,18 @@ internal sealed class ModEntry : SimpleMod
 			{
 				var rows = group
 					.Entries
-					.GroupBy(e => e.Meta.rarity)
-					.Select(row => row
+					.Where(e => !e.Meta.unreleased)
+					.GroupBy(e => e.Meta.dontOffer ? 99 : (int)e.Meta.rarity)
+					.OrderBy(group => group.First().Meta.dontOffer ? 99 : (int)group.First().Meta.rarity)
+					.Select(group => group
 						.Select(entry => (Card)Activator.CreateInstance(entry.Type)!)
+						.OrderBy(card => card.GetFullDisplayName())
 						.ToList()
 					)
 					.ToList();
+
+				if (rows.Count <= 0) continue;
+
 				QueueTask(g => CardCollectionExportTask(g, withScreenFilter, rows, Path.Combine(deckExportPath, "cardPoster.png")));
 			}
 		}
@@ -142,7 +148,6 @@ internal sealed class ModEntry : SimpleMod
 
 	private void CardCollectionExportTask(G g, bool withScreenFilter, List<List<Card>> rows, string path)
 	{
-		Logger.LogInformation($"saving poster to path {path}");
 		using var stream = new FileStream(path, FileMode.Create);
 		CardRenderer.RenderCollection(g, withScreenFilter, rows, stream);
 	}
