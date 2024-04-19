@@ -121,6 +121,12 @@ internal sealed class ModEntry : SimpleMod
 			} 
 			else
 			{
+				HashSet<Type> starterCards = new();
+				if (StarterDeck.starterSets.TryGetValue(group.Deck, out StarterDeck? value))
+				{
+					starterCards = new(value.cards.Select(c => c.GetType()));
+				}
+
 				var rows = group
 					.Entries
 					.Where(e => !e.Meta.unreleased)
@@ -128,14 +134,17 @@ internal sealed class ModEntry : SimpleMod
 					.OrderBy(group => group.First().Meta.dontOffer ? 99 : (int)group.First().Meta.rarity)
 					.Select(group => group
 						.Select(entry => (Card)Activator.CreateInstance(entry.Type)!)
-						.OrderBy(card => card.GetFullDisplayName())
+						.OrderBy(card => 
+							(starterCards.Contains(card.GetType()) ? "0" : "1") + 
+							card.GetFullDisplayName()
+						)
 						.ToList()
 					)
 					.ToList();
 
 				if (rows.Count <= 0) continue;
 
-				QueueTask(g => CardCollectionExportTask(g, withScreenFilter, rows, Path.Combine(deckExportPath, "cardPoster.png")));
+				QueueTask(g => CardCollectionExportTask(g, withScreenFilter, rows, starterCards, Path.Combine(deckExportPath, "cardPoster.png")));
 			}
 		}
 	}
@@ -146,9 +155,9 @@ internal sealed class ModEntry : SimpleMod
 		CardRenderer.Render(g, withScreenFilter, card, stream);
 	}
 
-	private void CardCollectionExportTask(G g, bool withScreenFilter, List<List<Card>> rows, string path)
+	private void CardCollectionExportTask(G g, bool withScreenFilter, List<List<Card>> rows, HashSet<Type> starters, string path)
 	{
 		using var stream = new FileStream(path, FileMode.Create);
-		CardRenderer.RenderCollection(g, withScreenFilter, rows, stream);
+		CardRenderer.RenderCollection(g, withScreenFilter, rows, starters, stream);
 	}
 }

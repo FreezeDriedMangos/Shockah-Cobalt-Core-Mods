@@ -16,7 +16,8 @@ internal sealed class CardRenderer
 
 	private RenderTarget2D? CurrentRenderTarget;
 
-	public void RenderCollection(G g, bool withScreenFilter, List<List<Card>> rows, Stream stream)
+	// todo: replace HashSet starters with Dictionary<Type, Color> backgrounds
+	public void RenderCollection(G g, bool withScreenFilter, List<List<Card>> rows, HashSet<Type> starters, Stream stream)
 	{
 		int maxWidth = 0;
 		int maxHeight = 0;
@@ -51,7 +52,14 @@ internal sealed class CardRenderer
 			{
 				try
 				{
-					Vec cardOffset = new((imageSize.x - BaseCardSize.x) / 2 + 1, (imageSize.y - BaseCardSize.y) / 2 + 1);
+					//Vec cardOffset = new((imageSize.x - BaseCardSize.x) / 2 + 1, (imageSize.y - BaseCardSize.y) / 2 + 1);
+
+					if (starters.Contains(card.GetType()))
+					{
+						var cardSize = GetImageSize(card);
+						Draw.Rect(curX-HorizontalSpacing, curY-VerticalSpacing, (int)(cardSize.x)+HorizontalSpacing, (int)(cardSize.y)+VerticalSpacing, Colors.buttonEmphasis);
+					}
+
 					card.Render(g, posOverride: new Vec(curX, curY), fakeState: DB.fakeState, ignoreAnim: true, ignoreHover: true);
 				}
 				catch
