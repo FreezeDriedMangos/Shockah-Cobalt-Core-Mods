@@ -41,7 +41,7 @@ internal sealed class ModEntry : SimpleMod
 			Logger!.LogInformation("Tasks left in the queue: {TaskCount}", QueuedTasks.Count);
 	}
 
-	internal void AllCardExportTask(G g, bool withScreenFilter)
+	internal void AllCardExportTask(G g, bool withScreenFilter, bool individualImages = true)
 	{
 		var modloaderFolder = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -99,22 +99,37 @@ internal sealed class ModEntry : SimpleMod
 			if (group.HasUnreleased)
 				Directory.CreateDirectory(unreleasedCardsExportPath);
 
-			foreach (var entry in group.Entries)
+			if (individualImages)
 			{
-				var fileSafeCardKey = entry.Key;
-				foreach (var unsafeChar in Path.GetInvalidFileNameChars())
-					fileSafeCardKey = fileSafeCardKey.Replace(unsafeChar, '_');
-
-				List<Upgrade> upgrades = [Upgrade.None];
-				upgrades.AddRange(entry.Meta.upgradesTo);
-
-				foreach (var upgrade in upgrades)
+				foreach (var entry in group.Entries)
 				{
-					var exportPath = Path.Combine(entry.Meta.unreleased ? unreleasedCardsExportPath : deckExportPath, $"{fileSafeCardKey}{GetUpgradePathAffix(upgrade)}.png");
-					var card = (Card)Activator.CreateInstance(entry.Type)!;
-					card.upgrade = upgrade;
-					QueueTask(g => CardExportTask(g, withScreenFilter, card, exportPath));
+					var fileSafeCardKey = entry.Key;
+					foreach (var unsafeChar in Path.GetInvalidFileNameChars())
+						fileSafeCardKey = fileSafeCardKey.Replace(unsafeChar, '_');
+
+					List<Upgrade> upgrades = [Upgrade.None];
+					upgrades.AddRange(entry.Meta.upgradesTo);
+
+					foreach (var upgrade in upgrades)
+					{
+						var exportPath = Path.Combine(entry.Meta.unreleased ? unreleasedCardsExportPath : deckExportPath, $"{fileSafeCardKey}{GetUpgradePathAffix(upgrade)}.png");
+						var card = (Card)Activator.CreateInstance(entry.Type)!;
+						card.upgrade = upgrade;
+						QueueTask(g => CardExportTask(g, withScreenFilter, card, exportPath));
+					}
 				}
+			} 
+			else
+			{
+				var rows = group
+					.Entries
+					.GroupBy(e => e.Meta.rarity)
+					.Select(row => row
+						.Select(entry => (Card)Activator.CreateInstance(entry.Type)!)
+						.ToList()
+					)
+					.ToList();
+				QueueTask(g => CardCollectionExportTask(g, withScreenFilter, rows, Path.Combine(deckExportPath, "cardPoster.png")));
 			}
 		}
 	}
@@ -123,5 +138,12 @@ internal sealed class ModEntry : SimpleMod
 	{
 		using var stream = new FileStream(path, FileMode.Create);
 		CardRenderer.Render(g, withScreenFilter, card, stream);
+	}
+
+	private void CardCollectionExportTask(G g, bool withScreenFilter, List<List<Card>> rows, string path)
+	{
+		Logger.LogInformation($"saving poster to path {path}");
+		using var stream = new FileStream(path, FileMode.Create);
+		CardRenderer.RenderCollection(g, withScreenFilter, rows, stream);
 	}
 }

@@ -59,5 +59,13 @@ internal static class EditorPatches
 		ImGui.SameLine();
 		if (ImGui.Button("(bluish)"))
 			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: true));
+
+		ImGui.SameLine();
+		if (ImGui.Button("CAT card posters export"))
+			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: false, individualImages: false));
+
+		ImGui.SameLine();
+		if (ImGui.Button("(bluish)"))
+			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: true, individualImages: false));
 	}
 }

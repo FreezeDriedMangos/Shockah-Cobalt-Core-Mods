@@ -1,5 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Shockah.CatDiscordBotDataExport;
@@ -8,8 +11,76 @@ internal sealed class CardRenderer
 {
 	private static readonly Vec BaseCardSize = new(59, 82);
 	private static readonly Vec OverborderCardSize = new(67, 90);
+	private static readonly int HorizontalSpacing = 5;
+	private static readonly int VerticalSpacing = 5;
 
 	private RenderTarget2D? CurrentRenderTarget;
+
+	public void RenderCollection(G g, bool withScreenFilter, List<List<Card>> rows, Stream stream)
+	{
+		int maxWidth = 0;
+		int maxHeight = 0;
+		int maxRowSize = 0;
+		foreach (var row in rows)
+		{
+			maxRowSize = Math.Max(maxRowSize, row.Count);
+			foreach (var card in row)
+			{
+				var cardSize = GetImageSize(card);
+				maxWidth = (int)Math.Max(maxWidth, cardSize.x);
+				maxHeight = (int)Math.Max(maxHeight, cardSize.y);
+			}
+		}
+
+		Vec imageSize = new(maxRowSize*maxWidth + (maxRowSize)*HorizontalSpacing, rows.Count*maxHeight + (rows.Count)*VerticalSpacing);
+		RenderTarget2D target = new(g.mg.GraphicsDevice, (int)(imageSize.x * g.mg.PIX_SCALE), (int)(imageSize.y * g.mg.PIX_SCALE));
+
+		var oldRenderTargets = g.mg.GraphicsDevice.GetRenderTargets();
+
+		g.mg.GraphicsDevice.SetRenderTarget(target);
+
+		g.mg.GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Transparent);
+		Draw.StartAutoBatchFrame();
+
+
+		int curX = HorizontalSpacing / 2;
+		int curY = VerticalSpacing / 2;
+		foreach (var row in rows)
+		{
+			foreach (var card in row)
+			{
+				try
+				{
+					Vec cardOffset = new((imageSize.x - BaseCardSize.x) / 2 + 1, (imageSize.y - BaseCardSize.y) / 2 + 1);
+					card.Render(g, posOverride: new Vec(curX, curY), fakeState: DB.fakeState, ignoreAnim: true, ignoreHover: true);
+				}
+				catch
+				{
+					ModEntry.Instance.Logger.LogError("There was an error exporting card {Card}.", card.Key());
+				}
+
+				curX += maxWidth + HorizontalSpacing;
+			}
+
+			curX = HorizontalSpacing / 2;
+			curY += maxHeight + VerticalSpacing;
+		}
+
+		if (withScreenFilter)
+			Draw.Rect(0, 0, (int)(imageSize.x * g.mg.PIX_SCALE), (int)(imageSize.y * g.mg.PIX_SCALE), Colors.screenOverlay, new BlendState
+			{
+				ColorBlendFunction = BlendFunction.Add,
+				ColorSourceBlend = Blend.One,
+				ColorDestinationBlend = Blend.InverseSourceColor,
+				AlphaSourceBlend = Blend.DestinationAlpha,
+				AlphaDestinationBlend = Blend.DestinationAlpha
+			});
+		Draw.EndAutoBatchFrame();
+
+		g.mg.GraphicsDevice.SetRenderTargets(oldRenderTargets);
+
+		target.SaveAsPng(stream, (int)(imageSize.x * g.mg.PIX_SCALE), (int)(imageSize.y * g.mg.PIX_SCALE));
+	}
 
 	public void Render(G g, bool withScreenFilter, Card card, Stream stream)
 	{
