@@ -8,9 +8,16 @@ namespace Shockah.CatDiscordBotDataExport
 {
 	internal sealed class ApiImplementation : ICatApi
 	{
-		public void RegisterCardPosterTooltips(Deck deck, List<Tooltip> tooltips)
+		public void RegisterTooltips(Deck deck, List<Tooltip> tooltips)
 		{
 			CardRenderer.CardPosterTooltips[deck] = tooltips;
+		}
+
+		public List<Tooltip> GetTooltips(Deck deck)
+		{
+			if (!CardRenderer.CardPosterTooltips.ContainsKey(deck)) return new();
+
+			return CardRenderer.CardPosterTooltips[deck];
 		}
 	}
 }

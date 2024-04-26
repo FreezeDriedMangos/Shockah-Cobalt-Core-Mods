@@ -19,6 +19,7 @@ internal sealed class ModEntry : SimpleMod
 
 	private readonly Queue<Action<G>> QueuedTasks = new();
 	internal readonly CardRenderer CardRenderer = new();
+	internal readonly TooltipRenderer TooltipRenderer = new();
 
 	public override object? GetApi(IModManifest requestingMod)
 	{
@@ -34,6 +35,18 @@ internal sealed class ModEntry : SimpleMod
 		GPatches.Apply(harmony);
 
 		MoreDifficultiesApi = helper.ModRegistry.GetApi<IMoreDifficultiesApi>("TheJazMaster.MoreDifficulties");
+
+		Api.RegisterTooltips(Deck.dizzy, new()
+		{
+			(new AStatus { targetPlayer = true, status = Status.maxShield, statusAmount = 1 }).GetTooltips(DB.fakeState).First(),
+			(new AStatus { targetPlayer = true, status = Status.stunCharge, statusAmount = 1 }).GetTooltips(DB.fakeState).First(),
+			(new AStatus { targetPlayer = true, status = Status.stunSource, statusAmount = 1 }).GetTooltips(DB.fakeState).First(),
+			(new AStatus { targetPlayer = true, status = Status.corrode, statusAmount = 1 }).GetTooltips(DB.fakeState).First(),
+			(new AStatus { targetPlayer = true, status = Status.mitosis, statusAmount = 1 }).GetTooltips(DB.fakeState).First(),
+			(new AStatus { targetPlayer = true, status = Status.payback, statusAmount = 1 }).GetTooltips(DB.fakeState).First(),
+			(new AStunShip()).GetTooltips(DB.fakeState).First(),
+			(new AEndTurn()).GetTooltips(DB.fakeState).First(),
+		});
 	}
 
 	internal void QueueTask(Action<G> task)
@@ -184,6 +197,39 @@ internal sealed class ModEntry : SimpleMod
 		}
 	}
 
+
+	internal void AllTooltipsExportTask(G g, bool withScreenFilter)
+	{
+		var modloaderFolder = AppDomain.CurrentDomain.BaseDirectory;
+
+		var groupedTooltips = CardRenderer.CardPosterTooltips
+			.Select(kvp => (Deck: kvp.Key, Entries: kvp.Value))
+			.ToList();
+
+		var exportableDataPath = Path.Combine(modloaderFolder, "CatDiscordBotDataExport", "tooltips");
+		Directory.CreateDirectory(exportableDataPath);
+
+		foreach (var group in groupedTooltips)
+		{
+			var fileSafeDeckKey = group.Deck.Key();
+			foreach (var unsafeChar in Path.GetInvalidFileNameChars())
+				fileSafeDeckKey = fileSafeDeckKey.Replace(unsafeChar, '_');
+
+			var tooltipsExportPath = Path.Combine(modloaderFolder, "CatDiscordBotDataExport", "tooltips", fileSafeDeckKey);
+			Directory.CreateDirectory(tooltipsExportPath);
+
+			for (int i = 0; i < group.Entries.Count; i++)
+			{
+				var entry = group.Entries[i];
+
+				var fileSafeCardKey = i;
+
+				var exportPath = Path.Combine(tooltipsExportPath, $"{fileSafeCardKey}.png");
+				QueueTask(g => TooltipExportTask(g, withScreenFilter, entry, exportPath));
+			}
+		}
+	}
+
 	private void CardExportTask(G g, bool withScreenFilter, Card card, string path)
 	{
 		using var stream = new FileStream(path, FileMode.Create);
@@ -194,5 +240,11 @@ internal sealed class ModEntry : SimpleMod
 	{
 		using var stream = new FileStream(path, FileMode.Create);
 		CardRenderer.RenderCollection(g, withScreenFilter, rows, stream, backgrounds, new());
+	}
+
+	private void TooltipExportTask(G g, bool withScreenFilter, Tooltip tooltip, string path)
+	{
+		using var stream = new FileStream(path, FileMode.Create);
+		TooltipRenderer.Render(g, withScreenFilter, tooltip, stream);
 	}
 }

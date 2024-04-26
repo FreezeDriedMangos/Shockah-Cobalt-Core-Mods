@@ -52,7 +52,7 @@ internal static class EditorPatches
 
 	private static void Editor_PanelTools_Transpiler_AddButtons()
 	{
-		ImGui.SameLine();
+		//ImGui.SameLine();
 		if (ImGui.Button("CAT card export"))
 			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: false));
 
@@ -60,12 +60,20 @@ internal static class EditorPatches
 		if (ImGui.Button("(bluish)"))
 			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: true));
 
-		ImGui.SameLine();
+		//ImGui.SameLine();
 		if (ImGui.Button("CAT card posters export"))
 			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: false, individualImages: false));
 
 		ImGui.SameLine();
 		if (ImGui.Button("(bluish)"))
 			Instance.QueueTask(g => Instance.AllCardExportTask(g, withScreenFilter: true, individualImages: false));
+
+		//ImGui.SameLine();
+		if (ImGui.Button("CAT tooltips export"))
+			Instance.QueueTask(g => Instance.AllTooltipsExportTask(g, withScreenFilter: false));
+
+		ImGui.SameLine();
+		if (ImGui.Button("(bluish)"))
+			Instance.QueueTask(g => Instance.AllTooltipsExportTask(g, withScreenFilter: true));
 	}
 }

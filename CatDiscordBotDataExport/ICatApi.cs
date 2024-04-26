@@ -8,6 +8,7 @@ namespace Shockah.CatDiscordBotDataExport
 {
 	public interface ICatApi
 	{
-		void RegisterCardPosterTooltips(Deck deck, List<Tooltip> tooltips);
+		void RegisterTooltips(Deck deck, List<Tooltip> tooltips);
+		List<Tooltip> GetTooltips(Deck deck);
 	}
 }

@@ -147,15 +147,15 @@ internal sealed class CardRenderer
 	}
 }
 
-internal class TooltipRenderer
+internal sealed class TooltipRenderer
 {
-	private void Render(G g, bool withScreenFilter, Tooltip tooltip, Stream stream)
+	public void Render(G g, bool withScreenFilter, Tooltip tooltip, Stream stream)
 	{
 		var imageBounds = tooltip.Render(g, dontDraw: true);
-		var imageSize = new Vec(imageBounds.w, imageBounds.h);
+		var imageSize = new Vec(imageBounds.w, imageBounds.h+7) + new Vec(16, 11); // tooltip size + border size
 		RendererHelper.RenderToPng(g, stream, imageSize, withScreenFilter, $"Tooltip {tooltip.GetType().FullName}", () =>
 		{
-			tooltip.Render(g, false);
+			Tooltip.RenderMultiple(g, new(), new() { tooltip });
 		});
 	}
 }
