@@ -13,9 +13,17 @@ namespace Shockah.CatDiscordBotDataExport;
 internal sealed class ModEntry : SimpleMod
 {
 	internal static ModEntry Instance { get; private set; } = null!;
+	
+	internal readonly ICatApi Api = new ApiImplementation();
+	internal readonly IMoreDifficultiesApi? MoreDifficultiesApi;
 
 	private readonly Queue<Action<G>> QueuedTasks = new();
 	internal readonly CardRenderer CardRenderer = new();
+
+	public override object? GetApi(IModManifest requestingMod)
+	{
+		return Api;
+	}
 
 	public ModEntry(IPluginPackage<IModManifest> package, IModHelper helper, ILogger logger) : base(package, helper, logger)
 	{
@@ -24,6 +32,8 @@ internal sealed class ModEntry : SimpleMod
 		var harmony = new Harmony(package.Manifest.UniqueName);
 		EditorPatches.Apply(harmony);
 		GPatches.Apply(harmony);
+
+		MoreDifficultiesApi = helper.ModRegistry.GetApi<IMoreDifficultiesApi>("TheJazMaster.MoreDifficulties");
 	}
 
 	internal void QueueTask(Action<G> task)
@@ -121,10 +131,28 @@ internal sealed class ModEntry : SimpleMod
 			} 
 			else
 			{
+				var backgrounds = new Dictionary<Type, Color>();
+
 				HashSet<Type> starterCards = new();
 				if (StarterDeck.starterSets.TryGetValue(group.Deck, out StarterDeck? value))
 				{
 					starterCards = new(value.cards.Select(c => c.GetType()));
+					foreach (var card in value.cards) backgrounds[card.GetType()] = Colors.buttonEmphasis;
+				}
+
+				StarterDeck? altStarterDeck = MoreDifficultiesApi?.GetAltStarters(group.Deck);
+				HashSet<Type> altStarters = new();
+				if (altStarterDeck != null)
+				{
+					altStarters = new(altStarterDeck.cards.Select(c => c.GetType()));
+					foreach (var card in altStarterDeck.cards) backgrounds[card.GetType()] = new Color("9c33ff");
+				}
+
+				string GetSortOrder(Card card)
+				{
+					if (starterCards.Contains(card.GetType())) return "0";
+					if (altStarters.Contains(card.GetType())) return "1";
+					return "2";
 				}
 
 				var rows = group
@@ -134,17 +162,24 @@ internal sealed class ModEntry : SimpleMod
 					.OrderBy(group => group.First().Meta.dontOffer ? 99 : (int)group.First().Meta.rarity)
 					.Select(group => group
 						.Select(entry => (Card)Activator.CreateInstance(entry.Type)!)
-						.OrderBy(card => 
-							(starterCards.Contains(card.GetType()) ? "0" : "1") + 
+						.OrderBy(card =>
+							GetSortOrder(card) + 
 							card.GetFullDisplayName()
 						)
 						.ToList()
 					)
 					.ToList();
 
+
 				if (rows.Count <= 0) continue;
 
-				QueueTask(g => CardCollectionExportTask(g, withScreenFilter, rows, starterCards, Path.Combine(deckExportPath, "cardPoster.png")));
+				QueueTask(g => CardCollectionExportTask(
+					g, 
+					withScreenFilter, 
+					rows, 
+					Path.Combine(deckExportPath, "cardPoster.png"), 
+					backgrounds
+				));
 			}
 		}
 	}
@@ -155,9 +190,9 @@ internal sealed class ModEntry : SimpleMod
 		CardRenderer.Render(g, withScreenFilter, card, stream);
 	}
 
-	private void CardCollectionExportTask(G g, bool withScreenFilter, List<List<Card>> rows, HashSet<Type> starters, string path)
+	private void CardCollectionExportTask(G g, bool withScreenFilter, List<List<Card>> rows, string path, Dictionary<Type, Color>? backgrounds = null)
 	{
 		using var stream = new FileStream(path, FileMode.Create);
-		CardRenderer.RenderCollection(g, withScreenFilter, rows, starters, stream);
+		CardRenderer.RenderCollection(g, withScreenFilter, rows, stream, backgrounds, new());
 	}
 }
